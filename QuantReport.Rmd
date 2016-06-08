@@ -1,22 +1,99 @@
 ---
-title: "QuantReport"
-author: "aming.tao"
-date: "2016年5月11日"
+title: "市场观察"
+date: '2016/06/07'
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
-summary(cars)
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo=FALSE)
+source('ReportRun.R', encoding = 'UTF-8')
 ```
 
-You can also embed plots, for example:
 
-```{r, echo=FALSE}
-plot(cars)
+## 一、指数估值
+### (一)指数动态市盈率
+核心指数成分股的动态市盈率中位数走势如下图所示：
+
+```{r indexValue,warning=FALSE}
+plotvalue <- indexValue$plotvalue
+ggplot.ts.line(plotvalue,main='指数历史估值(PE_median)')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### (二)指数动态市盈率百分位
+核心指数上述数据的百分位走势如下图所示：
+
+```{r indexValuePer,warning=FALSE}
+plotvalue <- indexValue$plotpercent
+ggplot.ts.line(plotvalue,main='指数历史估值百分位(PE_median)')
+```
+
+### (三)指数估值概览
+纳入观察的18只指数最新的估值情况如下表：
+   
+```{r indexValuetable,results='asis'}
+tablevalue <- indexValue$new
+kable(tablevalue)
+```
+
+
+## 二、基差
+### (一)基差走势
+三大股指期货隔季合约基差走势如下图：
+   
+```{r spreadts,warning=FALSE}
+ggplot.ts.line(IFSpread$ts,main='股指期货基差百分比')
+```
+  
+### (二)基差概况
+三大股指期货连续合约基差概况如下表：
+    
+```{r spreadinfo,results='asis'}
+kable(IFSpread$info)
+```
+
+
+
+## 三、套利
+### (一)复牌股票套利
+近两天复牌股票套利情况如下表：
+    
+```{r resumeStock,results='asis'}
+if(is.character(resumeStock)){
+  print('无复牌股票套利')
+}else{
+  kable(resumeStock)
+}
+
+```
+
+
+## 四、择时
+   
+**任何指标都不能单一而绝对的发出买入卖出信号**，一个相对合理的择时模型应该是**基本面**和**技术面**的结合。以下关于技术分析的探索，还须和上面基于指数估值的探索相结合，至于如何结合，还需要进一步的研究。
+   
+### (一)大盘均线强弱指数
+大盘均线强弱指数在一定程度上可以视为一个反转指标，当大盘均线得分接近8分时，预示市场接近顶部，当大盘均线得分接近0分时，预示市场接近底部。    
+其原理是根据申万28个一级行业走势与其8均线(8,13,21,34,55,89,144,233)组合构造而来，譬如申万电子EI801080收盘价在8根均线之上，记为8分，在7根均线之上记为7分，以此类推，最后求28个一级行业的平均得分。   
+大盘均线强弱指数近一年来走势如下图： 
+    
+```{r indexMAplot}
+ggplot.ts.line(indexScore$ts)
+```   
+   
+申万一级行业的最新得分及上周得分见下表：   
+   
+```{r indexMAtable,results='asis'}
+kable(indexScore$data)
+```      
+   
+
+### (二)LLT及均线择时
+   
+**************************************************************************
+    
+    
+**************************************************************************
+
+
+
