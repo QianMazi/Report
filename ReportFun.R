@@ -43,8 +43,14 @@ getIV <- function(valtype=c('PE','PB'),caltype=c('median','mean'),begT=as.Date('
   newresult <- arrange(newresult,desc(percentRank))
   newresult <- newresult[,c("date","indexID","indexName","value","valuelastweek",
                             "percentRank","percentRanklastweek")]
-  colnames(newresult) <- c('日期','指数代码','指数简称','动态市盈率','上周动态市盈率',
-                           '市盈率百分位','上周市盈率百分位')
+  if(valtype=='PE'){
+    colnames(newresult) <- c('日期','指数代码','指数简称','动态市盈率','上周动态市盈率',
+                             '市盈率百分位','上周市盈率百分位')
+  }else{
+    colnames(newresult) <- c('日期','指数代码','指数简称','动态市净率','上周动态市净率',
+                             '市净率百分位','上周市净率百分位')
+  }
+
   
   valuets <- re[re$indexID %in% plotIndex,c('date','indexName',name)]
   tmp <- ddply(valuets,.(indexName),summarise,mindate=min(date))
@@ -592,7 +598,7 @@ LLT <- function(indexID='EI000300',d=60,trancost=0.001,type=c('LLT','SMA')){
               'EI'+s.SecuCode 'indexID',q.OpenPrice 'open',q.ClosePrice 'close',q.ChangePCT/100 'indexRtn'
               from [JYDB].[dbo].[QT_IndexQuote] q,JYDB.dbo.SecuMain s
               where q.InnerCode=s.InnerCode and s.SecuCode=",QT(str_sub(indexID,3,8)),
-              " and q.TradingDay>='2005-01-04' ORDER by q.TradingDay")
+              " and q.TradingDay>='2010-01-04' ORDER by q.TradingDay")
   indexQuote <- sqlQuery(db.jy(),qr,stringsAsFactors=F)
   indexQuote$date <- intdate2r(indexQuote$date)
   
@@ -617,16 +623,23 @@ LLT <- function(indexID='EI000300',d=60,trancost=0.001,type=c('LLT','SMA')){
       if(indexQuote$LLT[i-1]>indexQuote$LLT[i-2] && indexQuote$pos[i-1]==0){
         indexQuote$pos[i] <- 1
         indexQuote$tmp[i] <- indexQuote$close[i]/indexQuote$open[i]-1-trancost
-        indexQuote$signal[i-1] <- 'buy'
-        indexQuote$signal[i] <- 'hold'
       }else if(indexQuote$LLT[i-1]>indexQuote$LLT[i-2] && indexQuote$pos[i-1]==1){
         indexQuote$pos[i] <- 1
-        indexQuote$signal[i] <- 'hold'
       }else if(indexQuote$LLT[i-1]<indexQuote$LLT[i-2] && indexQuote$pos[i-1]==1){
         indexQuote$pos[i] <- 0
         indexQuote$tmp[i] <- indexQuote$open[i]/indexQuote$close[i-1]-1-trancost
-        indexQuote$signal[i-1] <- 'sell'
       }
+      
+      if(indexQuote$LLT[i]>indexQuote$LLT[i-1] && indexQuote$pos[i]==0){
+        indexQuote$signal[i] <- 'buy'
+      }else if(indexQuote$LLT[i]>indexQuote$LLT[i-1] && indexQuote$pos[i]==1){
+        indexQuote$signal[i] <- 'hold'
+      }else if(indexQuote$LLT[i]<indexQuote$LLT[i-1] && indexQuote$pos[i]==1){
+        indexQuote$signal[i] <- 'sell'
+      }
+      
+      
+      
     }
     
   }else{
@@ -641,16 +654,22 @@ LLT <- function(indexID='EI000300',d=60,trancost=0.001,type=c('LLT','SMA')){
       if(indexQuote$close[i-1]>indexQuote$MA[i-1] && indexQuote$pos[i-1]==0){
         indexQuote$pos[i] <- 1
         indexQuote$tmp[i] <- indexQuote$close[i]/indexQuote$open[i]-1-trancost
-        indexQuote$signal[i-1] <- 'buy'
-        indexQuote$signal[i] <- 'hold'
       }else if(indexQuote$close[i-1]>indexQuote$MA[i-1] && indexQuote$pos[i-1]==1){
         indexQuote$pos[i] <- 1
-        indexQuote$signal[i] <- 'hold'
       }else if(indexQuote$close[i-1]<indexQuote$MA[i-1] && indexQuote$pos[i-1]==1){
         indexQuote$pos[i] <- 0
         indexQuote$tmp[i] <- indexQuote$open[i]/indexQuote$close[i-1]-1-trancost
-        indexQuote$signal[i-1] <- 'sell'
       }
+      
+      if(indexQuote$close[i]>indexQuote$MA[i] && indexQuote$pos[i]==0){
+        indexQuote$signal[i] <- 'buy'
+      }else if(indexQuote$close[i]>indexQuote$MA[i] && indexQuote$pos[i]==1){
+        indexQuote$signal[i] <- 'hold'
+      }else if(indexQuote$close[i]<indexQuote$MA[i] && indexQuote$pos[i]==1){
+        indexQuote$signal[i] <- 'sell'
+      }
+      
+      
     }
     
     

@@ -11,6 +11,13 @@ lcdb.update.QT_IndexTiming(type='update')
 
 #get index valuation result
 indexValue <- getIV()
+tmp <- getIV(valtype = 'PB',caltype = 'median')
+tablevaluation <- indexValue$new
+tmp <- tmp$new
+tmp <- tmp[,c("日期","指数代码","指数简称","动态市净率","市净率百分位")]
+tablevaluation <- merge(tablevaluation,tmp,by=c("日期","指数代码","指数简称"))
+tablevaluation <- arrange(tablevaluation,desc(tablevaluation[,6]))
+
 
 #get index futures spread info
 IFSpread <- getIFSpread()
@@ -38,7 +45,7 @@ allwealth <- WealthIndex(hs300$rtn)
 tmp <- WealthIndex(cyb$rtn)
 allwealth <- merge(allwealth,tmp)
 names(allwealth) <- c('沪深300指数净值','沪深300择时净值','创业板指净值','创业板择时净值')
-ggplot.ts.line(allwealth)
+
 
 allsum <- as.data.frame(round(rtn.summary(hs300$rtn),digits = 3)*100)
 tmp <- as.data.frame(round(rtn.summary(cyb$rtn),digits = 3)*100)
