@@ -284,16 +284,11 @@ resumeArbitrage <- function(begDate,endDate){
                 " and s.InnerCode=ss.InnerCode and ss.SecuCategory=1")
     resume.stock <- sqlQuery(db.jy(),qr,stringsAsFactors=F)
     
-    if(nrow(resume.stock)>0){
-      resume.stock$suspendDate <- intdate2r(resume.stock$suspendDate)
-      resume.stock$resumeDate <- intdate2r(resume.stock$resumeDate)
-      resume.stock$lastSuspendDay <- trday.nearby(resume.stock$resumeDate, by = 1)
-      resume.stock <- resume.stock[(resume.stock$resumeDate-resume.stock$suspendDate)>dayinterval,]
-      if(nrow(resume.stock)>0){
-        return(resume.stock)
-      }else print("No qualified stock!")
-    }else print("No resumption stock!")
-    
+    resume.stock$suspendDate <- intdate2r(resume.stock$suspendDate)
+    resume.stock$resumeDate <- intdate2r(resume.stock$resumeDate)
+    resume.stock$lastSuspendDay <- trday.nearby(resume.stock$resumeDate, by = 1)
+    resume.stock <- resume.stock[(resume.stock$resumeDate-resume.stock$suspendDate)>dayinterval,]
+    return(resume.stock)
   }
   
   get.fund.info <- function(){
@@ -515,7 +510,7 @@ resumeArbitrage <- function(begDate,endDate){
   
   #calculate stock's industry change pct during suspend time
   resume.stock <- calc.match.industrypct(resume.stock,index.quote)
-  
+  if(is.character(resume.stock)) return("None!")
   #
   resume.stock <- calc.match.indexcomponent(resume.stock,index.component)
   if(is.character(resume.stock)) return("None!")
@@ -686,6 +681,244 @@ LLT <- function(indexID='EI000300',d=60,trancost=0.001,type=c('LLT','SMA')){
 
 
 
+gridTrade.IF <- function(indexID='EI000300',begT=as.Date('2015-09-01'),endT=Sys.Date(),para){
+  
+  getData <- function(indexID,begT,endT){
+    if(indexID=='EI000300'){
+      tmp <- 'IF1%'
+    }else if(indexID=='EI000905'){
+      tmp <- 'IC1%'
+    }else if(indexID=='EI000016'){
+      tmp <- 'IH1%'
+    }
+    
+    #get index future quote
+    qr <- paste("select convert(varchar(10),t.TradingDay,112) 'date',
+                t.ContractCode 'stockID',
+                convert(varchar(10),c.EffectiveDate,112) 'effectiveDate',
+                convert(varchar(10),c.LastTradingDate,112) 'lastTradingDate',
+                t.ClosePrice 'close'
+                from JYDB.dbo.Fut_TradingQuote t,JYDB.dbo.Fut_ContractMain c 
+                where t.ContractInnerCode=c.ContractInnerCode and
+                t.ContractCode like ",QT(tmp), 
+                " and t.TradingDay>=",QT(begT)," and t.TradingDay<=",QT(endT),
+                " order by t.TradingDay,t.ContractCode")
+    indexData <- sqlQuery(db.jy(),qr,stringsAsFactors =F)
+    indexData <- transform(indexData,date=intdate2r(date),effectiveDate=intdate2r(effectiveDate),
+                           lastTradingDate=intdate2r(lastTradingDate))
+    indexData$lastTradingDate <- trday.nearby(indexData$lastTradingDate,by=1)
+    indexData.copy <- indexData
+    
+    # keep the next quarter contract
+    indexData$tmp <- c(0)
+    shiftData <- data.frame()
+    for(i in 1:nrow(indexData)){
+      if(i==1){
+        IF.ID <- indexData$stockID[4]
+        IF.lastDay <- indexData$lastTradingDate[4]
+      }
+      if(indexData$stockID[i]==IF.ID && indexData$date[i]<IF.lastDay){
+        indexData$tmp[i] <- 1
+      }else if(indexData$stockID[i]==IF.ID && indexData$date[i]==IF.lastDay){
+        shiftData <- rbind(shiftData,indexData[i,c("date","stockID","close")])
+        tmp <- indexData[indexData$date==indexData$date[i],]
+        IF.ID <- tmp$stockID[4]
+        IF.lastDay <- tmp$lastTradingDate[4]
+      }
+    }
+    indexData <- indexData[indexData$tmp==1,c("date","stockID","close")]
+    
+    #get index quote
+    qr <- paste("select convert(varchar(10),q.TradingDay,112) 'date',
+                q.ClosePrice 'benchClose'
+                from jydb.dbo.QT_IndexQuote q,JYDB.dbo.SecuMain s
+                where q.InnerCode=s.InnerCode and s.SecuCode=",QT(substr(indexID,3,8)),
+                "and q.TradingDay>=",QT(begT)," and q.TradingDay<=",QT(endT),
+                "order by q.TradingDay")
+    tmp <- sqlQuery(db.jy(),qr)
+    tmp$date <- intdate2r(tmp$date)
+    indexData <- merge(indexData,tmp,by='date',all.x=T)
+    alldata <- list(indexData=indexData,shiftData=shiftData)
+    return(alldata)
+  }  
+  
+  calcData <- function(indexData,shiftData,para){
+    indexData <- transform(indexData,benchPct=round(benchClose/indexData$benchClose[1]-1,digits = 3),
+                           pos=c(0),mv=c(0),cost=c(0),cash=c(0),totalasset=c(0),remark=NA)
+    for(i in 1:nrow(indexData)){
+      #initial
+      if(i==1){
+        indexData$pos[i] <-para$initPos 
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+        indexData$cost[i] <-para$tradeCost*indexData$mv[i]
+        indexData$cash[i] <-para$total-indexData$mv[i]-indexData$cost[i]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        indexData$remark[i] <-'initial'
+        next
+      }
+      
+      # shift positions
+      if(indexData$stockID[i]!=indexData$stockID[i-1]){
+        tmp <- subset(shiftData,stockID==indexData$stockID[i-1] & date==indexData$date[i],select=close)
+        indexData$pos[i] <-indexData$pos[i-1]
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+        indexData$cost[i] <-para$tradeCost*(indexData$mv[i]+indexData$pos[i-1]*tmp$close*para$multiplier)
+        indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]+indexData$pos[i-1]*tmp$close*para$multiplier-indexData$mv[i]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        indexData$remark[i] <-'shift position'
+      }
+      
+      #position change
+      if(indexData$benchPct[i]>para$bar){
+        todayPos <- para$initPos-floor(indexData$benchPct[i]/para$bar)
+      }else if(indexData$benchPct[i]<(-1*para$bar)){
+        todayPos <- para$initPos+floor(abs(indexData$benchPct[i]/para$bar))
+      }else{
+        todayPos <- para$initPos
+      }
+      
+      if(todayPos<indexData$pos[i-1] & indexData$pos[i-1]>0){
+        posChg <- min(indexData$pos[i-1]-todayPos,indexData$pos[i-1])
+        #subtract position
+        if(is.na(indexData$remark[i])){
+          indexData$pos[i] <-indexData$pos[i-1]-posChg
+          indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+          indexData$cost[i] <-para$tradeCost*posChg*para$multiplier*indexData$close[i]
+          indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]+posChg*para$multiplier*indexData$close[i]
+          indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+          indexData$remark[i] <-'subtract position'
+        }else{
+          #shift position + subtract position
+          indexData$pos[i] <-indexData$pos[i]-posChg
+          indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+          indexData$cost[i] <-indexData$cost[i]+para$tradeCost*posChg*para$multiplier*indexData$close[i]
+          indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]+posChg*para$multiplier*indexData$close[i]
+          indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        }
+      }else if(todayPos>indexData$pos[i-1] & indexData$cash[i-1]>=indexData$close[i]*para$multiplier){
+        #add position
+        posChg <- min(todayPos-indexData$pos[i-1],floor(indexData$cash[i-1]/indexData$close[i]*para$multiplier))
+        if(is.na(indexData$remark[i])){
+          indexData$pos[i] <-indexData$pos[i-1]+posChg
+          indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+          indexData$cost[i] <-para$tradeCost*posChg*para$multiplier*indexData$close[i]
+          indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]-posChg*para$multiplier*indexData$close[i]
+          indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+          indexData$remark[i] <-'add position'
+        }else{
+          #shift position + add position
+          indexData$pos[i] <-indexData$pos[i]+posChg
+          indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+          indexData$cost[i] <-indexData$cost[i]+para$tradeCost*posChg*para$multiplier*indexData$close[i]
+          indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]-posChg*para$multiplier*indexData$close[i]
+          indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        }
+        
+      }else{
+        #hold position
+        if(is.na(indexData$remark[i])){
+          indexData$pos[i] <-indexData$pos[i-1]
+          indexData$mv[i] <-indexData$pos[i]*indexData$close[i]*para$multiplier
+          indexData$cash[i] <-indexData$cash[i-1]
+          indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        }else next
+      }
+    }
+    
+    return(indexData)
+  }
+  
+  allData <- getData(indexID,begT,endT)
+  indexData <- allData$indexData
+  shiftData <- allData$shiftData
+  
+  indexData <- calcData(indexData,shiftData,para)
+  indexData <- indexData[,c("date","stockID","close","benchClose","benchPct","pos","mv","totalasset","remark" )]
+  return(indexData)
+}
+
+
+
+gridTrade.index <- function(indexID='EI000300',fundID='SH510500',begT=as.Date('2015-09-01'),endT=Sys.Date(),para){
+  getData <- function(indexID,fundID,begT,endT){
+    #get index quote
+    stocks <- c(fundID,indexID) 
+    indexData <- getQuote_ts(stocks, begT, endT, 'close', cycle = "cy_day()", rate = 1,rateday = 0)
+    indexData <- dcast(indexData,date~stockID,value.var = 'close')
+    indexData$stockID <- fundID
+    indexData <- indexData[,c('date','stockID',stocks)]
+    colnames(indexData) <- c('date','stockID','close','benchClose')
+    return(indexData)
+  }  
+  
+  calcData <- function(indexData,para){
+    indexData <- transform(indexData,benchPct=round(benchClose/indexData$benchClose[1]-1,digits = 3),
+                           pos=c(0),mv=c(0),invest=c(0),cost=c(0),cash=c(0),totalasset=c(0),remark=NA)
+    for(i in 1:nrow(indexData)){
+      #initial
+      if(i==1){
+        indexData$invest[i] <- para$initmv
+        indexData$pos[i] <- floor(para$initmv/(indexData$close[i]*100))*100
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]
+        indexData$cost[i] <-indexData$mv[i]*para$tradeCost
+        indexData$cash[i] <-para$total-indexData$mv[i]-indexData$cost[i]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        indexData$remark[i] <-'initial'
+        next
+      }
+      
+      #position change
+      if(indexData$benchPct[i]>para$bar){
+        todayInvest <- para$initmv-floor(indexData$benchPct[i]/para$bar)*para$mvChg
+      }else if(indexData$benchPct[i]<(-1*para$bar)){
+        todayInvest <- para$initmv+floor(abs(indexData$benchPct[i]/para$bar))*para$mvChg
+      }else{
+        todayInvest <- para$initmv
+      }
+      
+      if(todayInvest<indexData$invest[i-1] & indexData$mv[i-1]>0){
+        #subtract position
+        investChg <- min(indexData$invest[i-1]-todayInvest,indexData$mv[i-1])
+        indexData$invest[i] <- max(todayInvest,0)
+        chgPos <- floor(investChg/(indexData$close[i]*100))*100
+        indexData$pos[i] <-indexData$pos[i-1]-chgPos
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]
+        indexData$cost[i] <-chgPos*indexData$close[i]*para$tradeCost
+        indexData$cash[i] <-indexData$cash[i-1]-indexData$cost[i]+chgPos*indexData$close[i]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        indexData$remark[i] <-'subtract position'
+        
+      }else if(todayInvest>indexData$invest[i-1] & indexData$cash[i-1]>0){
+        #add position
+        investChg <- min(todayInvest-indexData$invest[i-1],indexData$cash[i-1])
+        indexData$invest[i] <- min(todayInvest,para$total)
+        chgPos <- floor(investChg/(indexData$close[i]*100))*100
+        indexData$pos[i] <-indexData$pos[i-1]+chgPos
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]
+        indexData$cost[i] <-chgPos*indexData$close[i]*para$tradeCost
+        indexData$cash[i] <-indexData$cash[i-1]-chgPos*indexData$close[i]-indexData$cost[i]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        indexData$remark[i] <-'add position'
+        
+      }else{
+        #hold position
+        indexData$invest[i] <- indexData$invest[i-1]
+        indexData$pos[i] <-indexData$pos[i-1]
+        indexData$mv[i] <-indexData$pos[i]*indexData$close[i]
+        indexData$cash[i] <-indexData$cash[i-1]
+        indexData$totalasset[i] <-indexData$mv[i]+indexData$cash[i]
+        
+      }
+    }
+    return(indexData)
+  }
+  
+  indexData <- getData(indexID,fundID,begT,endT)
+  
+  indexData <- calcData(indexData,para)
+  indexData <- indexData[,c("date","stockID","close","benchClose","benchPct","pos","mv","totalasset","remark")]
+  return(indexData)
+}
 
 
 

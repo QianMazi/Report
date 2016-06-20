@@ -52,6 +52,7 @@ tmp <- as.data.frame(round(rtn.summary(cyb$rtn),digits = 3)*100)
 allsum <- cbind(allsum,tmp)
 allsum <- allsum[c("Annualized Return","Annualized Std Dev","Annualized Sharpe (Rf=0%)"
                    ,"Worst Drawdown" ),]
+
 rownames(allsum) <- c('年化收益率','年化波动率','年化Sharpe值','最大回撤')
 colnames(allsum) <- c('沪深300指','沪深300LLT','创业板指','创业板MA')
 
