@@ -64,4 +64,43 @@ signal <- merge(signal,tmp,by='date')
 colnames(signal) <- c('日期','沪深300收盘价','沪深300择时信号','创业板收盘价','创业板择时信号')
 
 
+indexID='EI000300'
+begT=as.Date('2015-09-01')
+endT=Sys.Date()
+para=list(total=5000000,
+          initPos=2,
+          bar=0.1,
+          tradeCost=2/10000,
+          multiplier=200)
+
+gridIF300 <- gridTrade.IF(indexID,begT,endT,para)
+indexID='EI000905'
+gridIF500 <- gridTrade.IF(indexID,begT,endT,para)
+
+
+indexID <- 'SH000300'
+fundID <- 'SH510300'
+begT <- as.Date('2015-09-01')
+endT <- max(gridIF300$date)
+para=list(total=500000,
+          initmv=200000,
+          bar=0.05,
+          mvChg=50000,
+          tradeCost=1/1000)
+gridIndex300 <- gridTrade.index(indexID,fundID,begT,endT,para)
+indexID <- 'SH000905'
+fundID <- 'SH510500'
+gridIndex500 <- gridTrade.index(indexID,fundID,begT,endT,para) 
+gridResult <- cbind(gridIF300[,c('date','benchClose','totalasset')],
+                    gridIndex300[,c('totalasset')],
+                    gridIF500[,c('benchClose','totalasset')],
+                    gridIndex500[,c('totalasset')])
+colnames(gridResult) <- c('date','EI000300','grid300IF','grid300Index',
+                          'EI000905','grid500IF','grid500Index') 
+gridResult <- as.xts(gridResult[,-1],order.by = gridResult[,1])
+gridRtn <- Returns(gridResult)
+names(gridRtn) <- c('沪深300','沪深300网格IF','沪深300网格ETF',
+                       '中证500','中证500网格IC','中证500网格ETF')
+gridsum <- as.data.frame(round(rtn.summary(gridRtn),digits = 3)*100)
+gridWealth <- WealthIndex(gridRtn)
 

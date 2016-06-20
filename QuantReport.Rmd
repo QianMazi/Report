@@ -122,6 +122,24 @@ kable(allsum)
 ```{r timingsignal,results='asis'}
 kable(signal)
 ```  
+
+  
+    
+### (三)网格交易
+在经历了三轮股灾，A股逐步回归正常，在过去的一段时间呈现一个震荡的格局，如果未来没有增量信息，很可能维持震荡。结合股指期货的贴水，前期研究了一下网格交易。网格交易的结果如下图：
+
+```{r gridwealth,warning=FALSE}
+ggplot.ts.line(gridWealth)
+```
+
+    
+网格交易的收益统计如下表表：
+    
+```{r gridSum,results='asis'}
+kable(gridsum)
+```
+    
+ 
    
 **************************************************************************
     
