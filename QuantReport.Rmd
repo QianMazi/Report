@@ -9,29 +9,33 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
+library(ggplot2)
 knitr::opts_chunk$set(echo=FALSE)
 source('ReportRun.R', encoding = 'UTF-8')
 ```
 
 
-## 一、指数估值
-### (一)指数动态市盈率
-核心指数成分股的动态市盈率中位数走势如下图所示：
+## A、指数估值
+### (a)动态市盈率、市净率
+核心指数成分股近18个月的动态市盈率及动态市净率中位数走势如下图所示：
 
 ```{r indexValue,warning=FALSE}
-plotvalue <- indexValue$plotvalue
-ggplot.ts.line(plotvalue,main='指数历史估值(PE_median)')
+valuets.v <- valuets[,c("date","indexName","PE_median","PB_median")]
+p1 <- ggplot(valuets.v, aes(x=date, y=PE_median,color=indexName)) + geom_line()
+p2 <- ggplot(valuets.v, aes(x=date, y=PB_median,color=indexName)) + geom_line()
+multiplot(p1, p2, ncol=1)
 ```
 
-### (二)指数动态市盈率百分位
-核心指数上述数据的百分位走势如下图所示：
+### (b)动态市盈率、市净率百分位
+核心指数近18个月的动态市盈率百分位及动态市净率百分位走势如下图所示：
 
 ```{r indexValuePer,warning=FALSE}
-plotvalue <- indexValue$plotpercent
-ggplot.ts.line(plotvalue,main='指数历史估值百分位(PE_median)')
+valuets.p <- valuets[,c("date","indexName","perPE","perPB")]
+valuets.p <- reshape2::melt(valuets.p,id=c("date","indexName"))
+ggplot(valuets.p, aes(x=date, y=value,color=indexName))+geom_line()+facet_grid(variable~.)
 ```
 
-### (三)指数估值概览
+### (c)指数估值概览
 纳入观察的18只指数最新的估值情况如下表：
    
 ```{r indexValuetable,results='asis'}
@@ -44,19 +48,27 @@ kable(tablevaluation)
     
 **************************************************************************
 
-## 二、基差
-### (一)基差走势
-三大股指期货隔季合约基差走势如下图：
+## B、基差
+### (a)基差走势
+三大股指期货合约基差走势如下图，其中当月合约和次月合约年化基差百分比波动较大，仅展示合约基差百分比，当季合约和次季合约展示基差年化百分比：
    
 ```{r spreadts,warning=FALSE}
-ggplot.ts.line(IFSpread$ts,main='股指期货基差百分比')
+tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y00','IH0Y00','IF0Y00'),]
+p1 <- ggplot(tmp, aes(x=date, y=spreadPct,color=ConName))+geom_line()
+tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y01','IH0Y01','IF0Y01'),]
+p2 <- ggplot(tmp, aes(x=date, y=spreadPct,color=ConName))+geom_line()
+tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y02','IH0Y02','IF0Y02'),]
+p3 <- ggplot(tmp, aes(x=date, y=spreadPctAna,color=ConName))+geom_line()
+tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y03','IH0Y03','IF0Y03'),]
+p4 <- ggplot(tmp, aes(x=date, y=spreadPctAna,color=ConName))+geom_line()
+multiplot(p1,p2,p3,p4,ncol=1)
 ```
   
-### (二)基差概况
-三大股指期货连续合约基差概况如下表：
+### (b)基差概况
+三大股指期货连续合约基差概况如下表，近月合约临近到期日，年化基差百分比数据波动较大：
     
 ```{r spreadinfo,results='asis'}
-kable(IFSpread$info)
+kable(spreadinfo)
 ```
 
 
@@ -65,8 +77,8 @@ kable(IFSpread$info)
     
 **************************************************************************
 
-## 三、套利
-### (一)复牌股票套利
+## C、套利和事件
+### (a)复牌股票套利
 近两天复牌股票套利情况如下表：
     
 ```{r resumeStock,results='asis'}
@@ -78,30 +90,75 @@ if(is.character(resumeStock)){
 
 ```
 
-
-**************************************************************************
     
+### (b)定增基金(provided by han.qian)
+截止`r Sys.Date()`定增基金数据如下表，明细数据参见钱瀚的模板。
     
-**************************************************************************
-
-## 四、择时
+```{r privateOffering,results='asis'}
+kable(privateOffering)
+```
    
-### (一)大盘均线强弱指数
+   
+定增基金近期的净值走势如下图：
+    
+```{r ponav,warning=FALSE}
+ggplot(pofund, aes(x=date, y=NAV,color=fundName))+geom_line()
+```
+
+    
+定增基金近期的折溢价率百分比走势如下图：
+    
+```{r popre,warning=FALSE}
+ggplot(pofund, aes(x=date, y=pre,color=fundName))+geom_line()
+```
+
+
+### (c)定增解禁(provided by han.qian)
+近十天定增解禁的股票情况如下表。
+```{r unfrozenStock,results='asis'}
+kable(unfroz)
+```
+
+
+**************************************************************************
+    
+    
+**************************************************************************
+
+## D、择时
+
+
+### (a)等权指数
+从历史来看，A股市场存在小盘股效应，市值小的股票长期整体跑赢大市值的股票，美股市场同样存在类似的现象。而目前大部分指数的编制方案都是类似市值加权，为了抛去市值的影响，下面展示几个等权指数，其中中证500等权和沪深300等权是现有的指数，中证全指等权是自己编制的指数。等权指数可以视为一个更好地业绩比较基准。等权指数走势如下图： 
+    
+```{r ewMarketplot}
+ggplot.ts.line(ewMarketts)
+```   
+   
+等权指数收益率统计见下表：   
+   
+```{r ewMarkettable,results='asis'}
+kable(ewMarketSum)
+```      
+   
+
+
+### (b)大盘均线强弱指数
 大盘均线强弱指数在一定程度上可以视为一个反转指标，当大盘均线得分接近8分时，预示市场接近顶部，当大盘均线得分接近0分时，预示市场接近底部。    
 大盘均线强弱指数近一年来走势如下图： 
     
 ```{r indexMAplot}
-ggplot.ts.line(indexScore$ts)
+ggplot.ts.line(indexScorets)
 ```   
    
-申万一级行业的最新得分及上周得分见下表：   
+申万一级行业的最新得分见下表：   
    
 ```{r indexMAtable,results='asis'}
-kable(indexScore$data)
+kable(indexScoreData)
 ```      
    
 
-### (二)LLT及均线择时
+### (c)LLT及均线择时
 LLT本质上是一个改进的单均线择时指标，较原始的均线择时延迟更低。   
 择时模型和指数本身的净值走势如下图：
 
@@ -125,7 +182,7 @@ kable(signal)
 
   
     
-### (三)网格交易
+### (d)网格交易
 在经历了三轮股灾，A股逐步回归正常，在过去的一段时间呈现一个震荡的格局，如果未来没有增量信息，很可能维持震荡。结合股指期货的贴水，前期研究了一下网格交易。网格交易的结果如下图：
 
 ```{r gridwealth,warning=FALSE}
@@ -133,18 +190,67 @@ ggplot.ts.line(gridWealth)
 ```
 
     
-网格交易的收益统计如下表表：
+网格交易沪深300股指期货的最新仓位是`r scales::percent(last(gridIF300$mv/gridIF300$totalasset))`，中证500股指期货的最新仓位是`r scales::percent(last(gridIF500$mv/gridIF500$totalasset))`,网格交易的收益统计如下表：
     
 ```{r gridSum,results='asis'}
 kable(gridsum)
 ```
     
- 
-   
+
+
+      
 **************************************************************************
     
     
 **************************************************************************
 
+## E、选股
 
+
+### (a)超级小盘股
+作为多因子选股的第一部分，有必要从市值因子说起。
+下面利用总市值因子，在中证全指的成分股内，选出市值最小的100只股票，这里剔除了ST、新上市、停牌和涨停的股票，100只股票等权配置，每月换仓一次，交易成本千分之三。超级小盘股策略的净值表现如下图。
+
+```{r supersmallplot,warning=FALSE}
+ggplot.WealthIndex(smallStockRtn)
+```
+    
+
+超级小盘股的收益统计如下表：
+    
+```{r supersmalltable,results='asis'}
+kable(allsmallstockrtnSum)
+```
+
+
+
+### (b)银行股轮动
+银行股轮动是参考集思录的热门贴银行股评级而来的，数据的提取和参数的设置和原贴有一定的差别，所以轮动的效果也会不太一样，不过回测的效果还不错，从现在开始跟踪。2013年以来银行股轮动的结果如下图：
+    
+
+```{r bankplot,warning=FALSE}
+ggplot.WealthIndex(bankrtn)
+```
+    
+
+银行股轮动的收益统计如下表：
+    
+```{r banksum,results='asis'}
+kable(bankrtnsum)
+```
+    
+  
+银行股轮动的最新得分如下表：
+    
+```{r banknew,results='asis'}
+kable(banknew)
+```      
+    
+
+
+
+**************************************************************************
+    
+    
+**************************************************************************
 
