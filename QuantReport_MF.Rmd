@@ -11,7 +11,7 @@ output:
 library(knitr)
 library(ggplot2)
 knitr::opts_chunk$set(echo=FALSE)
-source('ReportRun.R', encoding = 'UTF-8')
+source('ReportRun_MF.R', encoding = 'UTF-8')
 ```
 
 
@@ -270,7 +270,10 @@ kable(banknew)
 ```      
     
 
+## F、多因子
 
+
+### (a)超级小盘股
 
 **************************************************************************
     
