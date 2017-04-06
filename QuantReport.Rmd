@@ -9,9 +9,8 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
-library(ggplot2)
 knitr::opts_chunk$set(echo=FALSE)
-source('ReportRun.R', encoding = 'UTF-8')
+suppressMessages(source('rpt_data_package.R', encoding = 'UTF-8'))
 ```
 
 
@@ -20,6 +19,7 @@ source('ReportRun.R', encoding = 'UTF-8')
 核心指数成分股近18个月的动态市盈率及动态市净率中位数走势如下图所示：
 
 ```{r indexValue,warning=FALSE}
+suppressMessages(source('rpt_index_valuation.R', encoding = 'UTF-8'))
 valuets.v <- valuets[,c("date","indexName","PE_median","PB_median")]
 p1 <- ggplot(valuets.v, aes(x=date, y=PE_median,color=indexName)) + geom_line()
 p2 <- ggplot(valuets.v, aes(x=date, y=PB_median,color=indexName)) + geom_line()
@@ -36,7 +36,7 @@ ggplot(valuets.p, aes(x=date, y=value,color=indexName))+geom_line()+facet_grid(v
 ```
 
 ### (c)指数估值概览
-纳入观察的18只指数最新的估值情况如下表：
+纳入观察的18只指数最新的估值情况如下表，根据市盈率和市净率分位数均值降序排列。
    
 ```{r indexValuetable,results='asis'}
 kable(tablevaluation)
@@ -61,6 +61,7 @@ ggplot.ts.line(value.all)
 三大股指期货合约基差走势如下图，其中当月合约和次月合约年化基差百分比波动较大，仅展示合约基差百分比，当季合约和次季合约展示基差年化百分比：
    
 ```{r spreadts,warning=FALSE}
+source('rpt_IF_spread.R', encoding = 'UTF-8')
 tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y00','IH0Y00','IF0Y00'),]
 p1 <- ggplot(tmp, aes(x=date, y=spreadPct,color=ConName))+geom_line()
 tmp <- spreadts[spreadts$stockIDCon %in% c('IC0Y01','IH0Y01','IF0Y01'),]
@@ -90,6 +91,7 @@ kable(spreadinfo)
 近两天复牌股票套利情况如下表：
     
 ```{r resumeStock,results='asis'}
+source('rpt_event_arbitrage.R', encoding = 'UTF-8')
 if(is.character(resumeStock)){
   print('无复牌股票套利')
 }else{
@@ -103,6 +105,12 @@ if(is.character(resumeStock)){
 截止`r Sys.Date()`定增基金数据如下表，明细数据参见钱瀚的模板。
     
 ```{r privateOffering,results='asis'}
+privateOffering <- read.csv("privateOffering.csv", stringsAsFactors=FALSE)
+privateOffering[,4] <- round(privateOffering[,4],2)
+privateOffering[,5] <- round(privateOffering[,5],2)
+privateOffering[,6] <- scales::percent(round(privateOffering[,6],3))
+privateOffering[,7] <- scales::percent(round(privateOffering[,7],3))
+privateOffering[,8] <- scales::percent(round(privateOffering[,8],3))
 kable(privateOffering)
 ```
    
@@ -110,6 +118,11 @@ kable(privateOffering)
 定增基金近期的净值走势如下图：
     
 ```{r ponav,warning=FALSE}
+fundID <- substr(privateOffering[,1],1,6)
+endT <- Sys.Date()
+begT <- trday.offset(endT,by = months(-3))
+pofund <- POFund(fundID,begT,endT)
+pofund$pre <- pofund$pre*100
 ggplot(pofund, aes(x=date, y=NAV,color=fundName))+geom_line()
 ```
 
@@ -155,6 +168,7 @@ kable(midsmall.rtntable)
 从历史来看，A股市场存在小盘股效应，市值小的股票长期整体跑赢大市值的股票，美股市场同样存在类似的现象。而目前大部分指数的编制方案都是类似市值加权，为了抛去市值的影响，下面展示几个等权指数，其中中证500等权和沪深300等权是现有的指数，中证全指等权是自己编制的指数。等权指数可以视为一个更好地业绩比较基准。等权指数走势如下图： 
     
 ```{r ewMarketplot}
+source("rpt_timing.R", encoding = 'UTF-8')
 ggplot.ts.line(ewMarketts)
 ```   
    
@@ -235,6 +249,7 @@ kable(gridsum)
 下面利用总市值因子，在中证全指的成分股内，选出市值最小的100只股票，这里剔除了ST、新上市、停牌和涨停的股票，100只股票等权配置，每月换仓一次，交易成本千分之三。超级小盘股策略的净值表现如下图。
 
 ```{r supersmallplot,warning=FALSE}
+source("rpt_pick_stock.R", encoding = 'UTF-8')
 ggplot.WealthIndex(smallStockRtn)
 ```
     
@@ -270,6 +285,12 @@ kable(banknew)
 ```      
     
 
+     
+     
+
+```{r,savedata}
+save(bond_yield,commodity_price,smallStockPort, smallStockRtn, file = "rptData.RData")
+```
 
 
 **************************************************************************
