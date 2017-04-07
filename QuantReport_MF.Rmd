@@ -294,45 +294,43 @@ source("rpt_factor_model.R", encoding = 'UTF-8')
 
 
 
-全市场因子IC表现如下图所示。
+全市场因子IC表现如下图所示，根据因子IC均值大于0，胜率大于50%简单区分了一下alpha因子和风险因子。
      
      
-```{r,IC_week_all,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_week_all %>% filter(indexID=='EI000985') %>% group_by(date, fname) %>%  arrange(IC) %>% ungroup() %>%
-  mutate(fname = factor(paste(fname, date, sep = "TMPxxx"), levels = rev(paste(fname,date, sep = "TMPxxx"))))
+```{r,IC_week_all,warning=FALSE}
+tmp <- ic_all %>% filter(period=='week',indexID=='EI000985') %>% group_by(date, fname) %>%  arrange(desc(mean),date) %>% ungroup() %>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity", show.legend = FALSE) +
-facet_wrap(~ date, ncol = 1,scales = "free") +
-scale_x_discrete(labels = function(x) gsub("TMPxxx.+$", "", x))+
+ggplot(tmp,aes(fname, IC,fill=date)) +
+geom_bar(stat = "identity",position = 'dodge') +
+facet_wrap(~tag,ncol = 1,scales = "free") +
 theme(axis.text.x=element_text(angle = 30))
+
 ```
      
      
 沪深300因子IC表现如下图所示。
      
-```{r,IC_week_hs300,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_week_all %>% filter(indexID=='EI000300') %>% group_by(date, fname) %>%  arrange(IC) %>% ungroup() %>%
-  mutate(fname = factor(paste(fname, date, sep = "TMPxxx"), levels = rev(paste(fname,date, sep = "TMPxxx"))))
+```{r,IC_week_hs300,warning=FALSE}
+tmp <- ic_all %>% filter(period=='week',indexID=='EI000300') %>% group_by(date, fname) %>%  arrange(desc(mean),date) %>% ungroup() %>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity", show.legend = FALSE) +
-facet_wrap(~ date, ncol = 1,scales = "free") +
-scale_x_discrete(labels = function(x) gsub("TMPxxx.+$", "", x))+
+ggplot(tmp,aes(fname, IC,fill=date)) +
+geom_bar(stat = "identity",position = 'dodge') +
+facet_wrap(~tag,ncol = 1,scales = "free") +
 theme(axis.text.x=element_text(angle = 30))
 ```
      
     
 中证500因子IC表现如下图所示。
      
-```{r,IC_week_zz500,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_week_all %>% filter(indexID=='EI000905') %>% group_by(date, fname) %>%  arrange(IC) %>% ungroup() %>%
-  mutate(fname = factor(paste(fname, date, sep = "TMPxxx"), levels = rev(paste(fname,date, sep = "TMPxxx"))))
+```{r,IC_week_zz500,warning=FALSE}
+tmp <- ic_all %>% filter(period=='week',indexID=='EI000905') %>% group_by(date, fname) %>%  arrange(desc(mean),date) %>% ungroup() %>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity", show.legend = FALSE) +
-facet_wrap(~ date, ncol = 1,scales = "free") +
-scale_x_discrete(labels = function(x) gsub("TMPxxx.+$", "", x))+
+ggplot(tmp,aes(fname, IC,fill=date)) +
+geom_bar(stat = "identity",position = 'dodge') +
+facet_wrap(~tag,ncol = 1,scales = "free") +
 theme(axis.text.x=element_text(angle = 30))
 ```     
     
@@ -340,66 +338,58 @@ theme(axis.text.x=element_text(angle = 30))
 因子IC统计如下表所示。
       
 ```{r,IC_week_summ_table,results='asis'}
-kable(IC_week_summary_table)
+kable(IC_summary_table[IC_summary_table$period=='week',-1])
 ```   
 
 
-### (b)近一个月周频因子多空收益
-在不同样本空间内，不同时间段，根据因子得分分为10组，得分最高的组收益率如下图所示，图上的标签标示该因子在这个样本空间内这个时间段的表现排名。
+### (b)近一个月周频因子分组超额收益
+全市场，不同时间段，根据因子得分分为10组，得分最高的组**超额**收益率如下图所示，根据累计收益率大于0和区间收益率为正概率大于0.5,简单区分了alpha因子和风险因子。
       
-```{r,ngroup_week_all_Q1,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_week_all %>% filter(group=='Q1') %>% group_by(indexID,date) %>%  arrange(indexID,date,desc(return)) %>%
-  mutate(rank = dense_rank(desc(return))) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+```{r,ngroup_week_all_Q1,warning=FALSE}
+tmp <- ngroup_all %>% filter(period=='week',indexID=='EI000985',group=='Q1') %>%  arrange(date,desc(return))%>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=indexID)) +
+ggplot(tmp,aes(fname, return,fill=date)) +
   geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 1,scales = "free") +
-  theme(axis.text.x=element_text(angle = 30))+
-  geom_text(aes(x=fname, y=return, label=rank), 
-            position = position_dodge(width=1),size=3.5)
+  facet_wrap(~tag,ncol = 1,scales = 'free') +
+  theme(axis.text.x=element_text(angle = 45))
+
 ```
     
     
-得分最最低的组收益率如下图所示。
+沪深300内得分最高的组**超额**收益率如下图所示。
     
      
-```{r,ngroup_week_all_spread,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_week_all %>% filter(group=='Q10') %>% group_by(indexID,date) %>%  arrange(indexID,date,return) %>%
-  mutate(rank = dense_rank(return)) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+```{r,ngroup_week_all_spread,warning=FALSE}
+tmp <- ngroup_all %>% filter(period=='week',indexID=='EI000300',group=='Q1') %>%  arrange(date,desc(return))%>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=indexID)) +
+ggplot(tmp,aes(fname, return,fill=date)) +
   geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 1,scales = "free") +
-  theme(axis.text.x=element_text(angle = 30))+
-  geom_text(aes(x=fname, y=return, label=rank), 
-            position = position_dodge(width=1),size=3.5)
+  facet_wrap(~tag,ncol = 1,scales = 'free') +
+  theme(axis.text.x=element_text(angle = 45))
 ```
      
     
       
-因子的多空收益率如下图所示。
+中证500内得分最高的组**超额**收益率如下图所示。
      
-```{r,ngroup_week_hs300_Q1,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_week_all %>% filter(group=='Q1_Q10') %>% group_by(indexID,date) %>%  arrange(indexID,date,desc(return)) %>%
-  mutate(rank = dense_rank(desc(return))) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+```{r,ngroup_week_hs300_Q1,warning=FALSE}
+tmp <- ngroup_all %>% filter(period=='week',indexID=='EI000300',group=='Q1') %>%  arrange(date,desc(return))%>%
+  mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=indexID)) +
+ggplot(tmp,aes(fname, return,fill=date)) +
   geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 1,scales = "free") +
-  theme(axis.text.x=element_text(angle = 30))+
-  geom_text(aes(x=fname, y=return, label=rank), 
-            position = position_dodge(width=1),size=3.5)
+  facet_wrap(~tag,ncol = 1,scales = 'free') +
+  theme(axis.text.x=element_text(angle = 45))
 ```
      
    
    
-各个样本空间内，因子得分最高的一组和得分最低的一组的累积收益率统计如下表所示。
+各个样本空间内，因子得分最高的一组和得分最低的一组的**超额**累积收益率统计如下表所示。
        
 ```{r,ngroup_week_summ_table,results='asis'}
-kable(ngroup_week_all_sum)
+kable(ngroup_all_sum[ngroup_all_sum$period=='week',-1])
 ```   
 
 
@@ -409,104 +399,99 @@ kable(ngroup_week_all_sum)
      
      
 ```{r,IC_month_all,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_month_all %>% filter(indexID=='EI000985') %>% group_by(date, fname) %>%  arrange(desc(IC)) %>% ungroup() %>%
-  mutate(fname = factor(fname))
+tmp <- ic_all %>% filter(period=='month',indexID=='EI000985')  %>%  
+  arrange(desc(mean)) %>% mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity") +
-facet_wrap(~ date, ncol = 3) +
-theme(axis.text.x=element_text(angle = 30))
+ggplot(tmp,aes(date, IC,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
 ```
      
      
 沪深300因子IC表现如下图所示。
      
 ```{r,IC_month_hs300,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_month_all %>% filter(indexID=='EI000300') %>% group_by(date, fname) %>%  arrange(desc(IC)) %>% ungroup() %>%
-  mutate(fname = factor(fname))
+tmp <- ic_all %>% filter(period=='month',indexID=='EI000300')  %>%  
+  arrange(desc(mean)) %>% mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity") +
-facet_wrap(~ date, ncol = 3) +
-theme(axis.text.x=element_text(angle = 30))
+ggplot(tmp,aes(date, IC,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
 ```
      
     
 中证500因子IC表现如下图所示。
      
 ```{r,IC_month_zz500,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ic_month_all %>% filter(indexID=='EI000905') %>% group_by(date, fname) %>%  arrange(desc(IC)) %>% ungroup() %>%
-  mutate(fname = factor(fname))
+tmp <- ic_all %>% filter(period=='month',indexID=='EI000905')  %>%  
+  arrange(desc(mean)) %>% mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, IC,fill=fname)) +
-geom_bar(stat = "identity") +
-facet_wrap(~ date, ncol = 3) +
-theme(axis.text.x=element_text(angle = 30))
+ggplot(tmp,aes(date, IC,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
 ```     
     
      
 因子IC统计如下表所示。
       
 ```{r,IC_month_summ_table,results='asis'}
-kable(IC_month_summary_table)
+kable(IC_summary_table[IC_summary_table$period=='month',-1])
 ```   
 
 
 
 
-### (d)近一年月频因子多空收益
-在不同样本空间内，不同时间段，根据因子得分分为10组，得分最高的组收益率如下图所示，图上的标签标示该因子在这个样本空间内这个时间段的表现排名。
+### (d)近一年月频因子分组超额收益
+全市场，不同时间段，根据因子得分分为10组，得分最高的组**超额**收益率如下图所示，根据累计收益率大于0和区间收益率为正概率大于0.5,简单区分了alpha因子和风险因子。
       
 ```{r,ngroup_month_all_Q1,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_month_all %>% filter(indexID=='EI000985',group=='Q1') %>% group_by(date) %>%  arrange(date,desc(return)) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+tmp <- ngroup_all %>% filter(period=='month',indexID=='EI000985',group=='Q1')  %>%  
+   mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=fname)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 3) +
-  theme(axis.text.x=element_text(angle = 30))
+ggplot(tmp,aes(date, return,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
+
 ```
     
     
-得分最最低的组收益率如下图所示。
+沪深300内得分最高的组**超额**收益率如下图所示。
     
      
 ```{r,ngroup_month_all_Q10,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_week_all %>% filter(group=='Q10') %>% group_by(indexID,date) %>%  arrange(indexID,date,return) %>%
-  mutate(rank = dense_rank(return)) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+tmp <- ngroup_all %>% filter(period=='month',indexID=='EI000300',group=='Q1')  %>%  
+   mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=indexID)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 1,scales = "free") +
-  theme(axis.text.x=element_text(angle = 30))+
-  geom_text(aes(x=fname, y=return, label=rank), 
-            position = position_dodge(width=1),size=3.5)
+ggplot(tmp,aes(date, return,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
 ```
      
     
       
-因子的多空收益率如下图所示。
+中证500内得分最高的组**超额**收益率如下图所示。
      
 ```{r,ngroup_month_spread,warning=FALSE,fig.height=10,fig.width=10}
-tmp <- ngroup_week_all %>% filter(group=='Q1_Q10') %>% group_by(indexID,date) %>%  arrange(indexID,date,desc(return)) %>%
-  mutate(rank = dense_rank(desc(return))) %>% ungroup() %>%
-  mutate(fname = factor(fname, levels = fname[1:length(FactorLists)]))
+tmp <- ngroup_all %>% filter(period=='month',indexID=='EI000905',group=='Q1')  %>%  
+   mutate(date = as.character(date))
 
-ggplot(tmp,aes(fname, return,fill=indexID)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  facet_wrap(~ date, ncol = 1,scales = "free") +
-  theme(axis.text.x=element_text(angle = 30))+
-  geom_text(aes(x=fname, y=return, label=rank), 
-            position = position_dodge(width=1),size=3.5)
+ggplot(tmp,aes(date, return,fill=date)) +
+geom_bar(stat = "identity",show.legend = FALSE) +
+facet_wrap(~ tag+fname) +
+theme(axis.text.x=element_text(angle = 90))
 ```
      
    
    
-各个样本空间内，因子得分最高的一组和得分最低的一组的累积收益率统计如下表所示。
+各个样本空间内，因子得分最高的一组和得分最低的一组的**超额**累积收益率统计如下表所示。
        
 ```{r,ngroup_month_summ_table,results='asis'}
-kable(ngroup_month_all_sum)
+kable(ngroup_all_sum[ngroup_all_sum$period=='month',-1])
 ```   
 
 
