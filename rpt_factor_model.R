@@ -16,6 +16,15 @@ FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.G_OCF_Q",
                   factorPar=list(),
                   factorDir=1),
+  buildFactorList(factorFun="gf.G_scissor_Q",
+                  factorPar=list(),
+                  factorDir=1),
+  buildFactorList(factorFun="gf.ROE_ttm",
+                  factorPar=list(),
+                  factorDir=1),
+  buildFactorList(factorFun="gf.PCF_ttm",
+                  factorPar=list(),
+                  factorDir=1),
   factorOutlier='boxplot')
 FactorLists <- c(tmp,FactorLists)
 
@@ -31,17 +40,17 @@ mp <- modelPar.default()
 mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
 TS <- getTS(RebDates_week,'EI000985')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_week <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 TS <- getTS(RebDates_week,'EI000300')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_week_hs300 <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 TS <- getTS(RebDates_week,'EI000905')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_week_zz500 <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 
@@ -54,17 +63,17 @@ RebDates_month <- sort(RebDates_month)
 
 TS <- getTS(RebDates_month,'EI000985')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_month <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 TS <- getTS(RebDates_month,'EI000300')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_month_hs300 <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 TS <- getTS(RebDates_month,'EI000905')
 TS <- rm_suspend(TS)
-TSR <- getTSR(TS)
+TSR <- getTSR(TS,date_end_pad = trday.nearest(Sys.Date()-1))
 TSFRs_month_zz500 <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 
 
