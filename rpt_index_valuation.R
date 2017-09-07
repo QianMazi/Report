@@ -16,8 +16,7 @@ tablevaluation <- transform(tablevaluation,
                             perPB=percent(perPB,digits = 0))
 colnames(tablevaluation) <- c('指数代码','指数简称','日期','动态市盈率','市盈率百分位','动态市净率','市净率百分位')
 
-valuets <- dplyr::filter(indexValue,indexID %in% c('EI801003','EI000300','EI399006'),
-                         date>=(max(date)-months(18)))
+valuets <- indexValue[indexValue$indexID %in% c('EI801003','EI000300','EI399006') & indexValue$date>=(max(indexValue$date)-540),]
 
 ################################ special valuation ###############################
 endT <- Sys.Date()-1

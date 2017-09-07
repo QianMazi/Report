@@ -11,7 +11,7 @@ output:
 library(knitr)
 knitr::opts_chunk$set(echo=FALSE)
 suppressMessages(source('rpt_data_package.R', encoding = 'UTF-8'))
-#lcdb.update()
+lcdb.update()
 ```
 
 
@@ -37,7 +37,7 @@ ggplot(valuets.p, aes(x=date, y=value,color=indexName))+geom_line()+facet_grid(v
 ```
 
 ### (a3)指数估值概览
-纳入观察的18只指数最新的估值情况如下表，根据市盈率和市净率分位数均值降序排列。
+纳入观察的指数最新的估值情况如下表，根据市盈率和市净率分位数均值降序排列。
    
 ```{r indexValuetable,results='asis'}
 kable(tablevaluation)
@@ -83,7 +83,7 @@ kable(spreadinfo)
      
     
 ### (b3)市场情绪(provided by han.qian)
-市场情绪记录今年以来每天自然涨跌停(剔除一字板)、创60日新高新低、多头排列空头排列(均线组合5,30,60,120)的股票数。
+市场情绪记录近60天每天自然涨跌停(剔除一字板)、创60日新高新低、多头排列空头排列(均线组合5,30,60,120)的股票数。
      
 ```{r emotion,warning=FALSE,fig.height=10,fig.width=10}
  multiplot(ggplot.ts.bar(daily_emo_tmp1),ggplot.ts.bar(daily_emo_tmp2),ggplot.ts.bar(daily_emo_tmp3))
@@ -97,11 +97,15 @@ kable(spreadinfo)
 **************************************************************************
 
 ## C、套利和事件
+```{r cpartsetup,include=FALSE}
+source('rpt_event_arbitrage.R', encoding = 'UTF-8')
+```
+    
+    
 ### (c1)复牌股票套利
 近两天复牌股票套利情况如下表：
     
 ```{r resumeStock,results='asis'}
-source('rpt_event_arbitrage.R', encoding = 'UTF-8')
 if(is.character(resumeStock)){
   print('No Arbitrage!')
 }else{
@@ -111,48 +115,23 @@ if(is.character(resumeStock)){
 ```
 
     
-### (c2)定增基金(provided by han.qian)
-定增基金数据如下表，明细数据参见钱瀚的模板。
-    
-```{r privateOffering,results='asis'}
-privateOffering <- read.csv("privateOffering.csv", stringsAsFactors=FALSE)
-privateOffering[,4] <- round(privateOffering[,4],2)
-privateOffering[,5] <- round(privateOffering[,5],2)
-privateOffering[,6] <- scales::percent(round(privateOffering[,6],3))
-privateOffering[,7] <- scales::percent(round(privateOffering[,7],3))
-privateOffering[,8] <- scales::percent(round(privateOffering[,8],3))
-kable(privateOffering)
-```
-   
-   
-定增基金近期的净值走势如下图：
-    
-```{r ponav,warning=FALSE}
-fundID <- substr(privateOffering[,1],1,6)
-endT <- Sys.Date()
-begT <- trday.offset(endT,by = months(-3))
-pofund <- POFund(fundID,begT,endT)
-pofund$pre <- pofund$pre*100
-ggplot(pofund, aes(x=date, y=NAV,color=fundName))+geom_line()
-```
-
-    
-定增基金近期的折溢价率百分比走势如下图：
-    
-```{r popre,warning=FALSE}
-ggplot(pofund, aes(x=date, y=pre,color=fundName))+geom_line()
-```
 
 
-### (c3)定增解禁(provided by han.qian)
-近十天定增解禁的股票情况如下表。
+### (c2)解禁
+解禁分成两个部分，定增解禁和IPO解禁，涨跌幅记录是过去十个交易日的股票涨跌幅和对应行业指数涨跌幅。伴随着去年下半年IPO逐步正常化，今后IPO解禁给市场造成的抛压会持续存在，所以纳入观察。近期定增解禁的股票情况如下表。
 ```{r unfrozenStock,results='asis'}
-kable(unfroz)
+kable(unfroz_p1)
+```
+   
+    
+近期IPO解禁的股票情况如下表。
+```{r unfrozenStock2,results='asis'}
+kable(unfroz_p2)
 ```
 
       
 
-### (c4)中小板业绩预增预测(provided by han.qian)
+### (c3)中小板业绩预增预测(provided by han.qian)
 中小板规定正式财务报告发布的同时需要发布新一期的业绩预报，比如年报中会包含一季报预告的情况。我们假设公司的盈利状况有动量效应，年报预增的公司一季度也会预增，在正式财务报告发布前20个交易日开始埋伏，然后等正式报告发布日卖出。具体研究参见钱瀚前期的研究。需要注意的是这里的收益率仅做展示，仅仅是每日全部入选股票的平均收益率，并没有做成一个事件组合。
     
 ```{r middlesmall}
@@ -167,7 +146,7 @@ kable(midsmall.rtntable)
 ```
   
 
-### (c5)ST摘帽(provided by han.qian)
+### (c4)ST摘帽(provided by han.qian)
 具体策略可以参见吴先兴的潜伏ST摘帽报告。
     
 ```{r strenameplot}
@@ -184,7 +163,7 @@ kable(st_port)
   
   
      
-### (c6)主动量化基金
+### (c5)主动量化基金
 主动量化基金最近一年和最近一个季度的收益率密度图如下所示。
 ```{r alphafundplot}
 ggplot(alphafund.result, aes(value, fill = type, colour = type)) +
@@ -198,7 +177,14 @@ ggplot(alphafund.result, aes(value, fill = type, colour = type)) +
 kable(alphafund.table)
 ```
 
+     
+    
+指数增强基金表现如下所示。
 
+```{r enhancefundtabe,results='asis'}
+kable(enhance.table.reshape)
+```     
+   
 
 **************************************************************************
     

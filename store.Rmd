@@ -1,0 +1,32 @@
+### (c2)定增基金(provided by han.qian)
+定增基金数据如下表，明细数据参见钱瀚的模板。
+    
+```{r privateOffering,results='asis'}
+privateOffering <- read.csv("privateOffering.csv", stringsAsFactors=FALSE)
+privateOffering[,4] <- round(privateOffering[,4],2)
+privateOffering[,5] <- round(privateOffering[,5],2)
+privateOffering[,6] <- scales::percent(round(privateOffering[,6],3))
+privateOffering[,7] <- scales::percent(round(privateOffering[,7],3))
+privateOffering[,8] <- scales::percent(round(privateOffering[,8],3))
+kable(privateOffering)
+```
+   
+   
+定增基金近期的净值走势如下图：
+    
+```{r ponav,warning=FALSE}
+fundID <- substr(privateOffering[,1],1,6)
+endT <- Sys.Date()
+begT <- trday.offset(endT,by = months(-3))
+pofund <- POFund(fundID,begT,endT)
+pofund$pre <- pofund$pre*100
+ggplot(pofund, aes(x=date, y=NAV,color=fundName))+geom_line()
+```
+
+    
+定增基金近期的折溢价率百分比走势如下图：
+    
+```{r popre,warning=FALSE}
+ggplot(pofund, aes(x=date, y=pre,color=fundName))+geom_line()
+```
+

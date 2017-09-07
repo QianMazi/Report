@@ -24,14 +24,15 @@ colnames(spreadinfo) <- c('日期','合约代码','合约收盘价','指数收�
 
 
 ###############################~~~~market emotion~~~~######################################
-begT <-  trday.nearby(max(daily_emo_dat$date),by = 1)
+begT <-  max(daily_emo_dat$date)
 endT <-  trday.nearest(Sys.Date()-1)
 if(begT<endT){
   tmp.daily_emo_dat <- MaziBox::rpt.dailyemotion(begT,endT)
-  tmp.daily_emo_dat <- rbind(daily_emo_dat,tmp.daily_emo_dat)
+  tmp.daily_emo_dat <- tmp.daily_emo_dat[tmp.daily_emo_dat$date>begT,]
+  daily_emo_dat <- rbind(daily_emo_dat,tmp.daily_emo_dat)
 }
 
-daily_emo_dat_forplot <- daily_emo_dat[,c("date","zt","dt","sixtyhigh","sixtylow","dtpl","ktpl")]
+daily_emo_dat_forplot <- daily_emo_dat[daily_emo_dat$date>=trday.nearest(Sys.Date()-60),c("date","zt","dt","sixtyhigh","sixtylow","dtpl","ktpl")]
 colnames(daily_emo_dat_forplot) <- c("date","自然涨停","自然跌停","60日新高","60日新低","多头排列","空头排列")
 daily_emo_tmp1 <- xts::xts(daily_emo_dat_forplot[,c(2,3)],order.by = daily_emo_dat_forplot[,1])
 daily_emo_tmp2 <- xts::xts(daily_emo_dat_forplot[,c(4,5)],order.by = daily_emo_dat_forplot[,1])

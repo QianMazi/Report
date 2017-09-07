@@ -1,7 +1,6 @@
 ##############################~~load data~~######################################
-factorIDs <- c("F000001","F000003","F000004","F000006","F000007",
-               "F000008","F000009","F000010","F000011","F000012",
-               "F000013","F000014","F000015","F000016","F000017","F000018")
+factorIDs <- c("F000003","F000004","F000006","F000007","F000008",
+               "F000013","F000014","F000016","F000017","F000018")
 tmp <- buildFactorLists_lcfs(factorIDs,factorOutlier='boxplot')
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.ln_mkt_cap",
@@ -13,16 +12,7 @@ FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
-  buildFactorList(factorFun="gf.G_OCF_Q",
-                  factorPar=list(),
-                  factorDir=1),
-  buildFactorList(factorFun="gf.G_scissor_Q",
-                  factorPar=list(),
-                  factorDir=1),
   buildFactorList(factorFun="gf.ROE_ttm",
-                  factorPar=list(),
-                  factorDir=1),
-  buildFactorList(factorFun="gf.PCF_ttm",
                   factorPar=list(),
                   factorDir=1),
   factorOutlier='boxplot')
